@@ -13,4 +13,3 @@ func CreateConnection(mysqlConnStr string) (*sqlx.DB, error) {
 
 	return mysqlConn, nil
 }
-

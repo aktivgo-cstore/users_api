@@ -31,8 +31,8 @@ func Run() error {
 	router.HandleFunc("refresh", h.HandleRefresh).Methods("GET")
 	router.HandleFunc("users", h.HandleUsers).Methods("GET")
 
-	if err := http.ListenAndServe(port, router); err != nil {
-		return fmt.Errorf("error on ListenAndServe")
+	if err := http.ListenAndServe(":"+port, router); err != nil {
+		return err
 	}
 
 	return nil
