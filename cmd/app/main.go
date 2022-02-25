@@ -7,6 +7,6 @@ import (
 
 func main() {
 	if err := app.Run(); err != nil {
-		log.Fatalln("Unable to start app. Error: " + err.Error())
+		log.Fatalln("Unable to start app: " + err.Error())
 	}
 }
