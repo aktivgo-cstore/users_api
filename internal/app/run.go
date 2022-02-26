@@ -5,8 +5,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"users_api/internal/handler"
 	"users_api/internal/repository"
-	"users_api/internal/service/handler"
 	"users_api/internal/storage/mysql"
 )
 

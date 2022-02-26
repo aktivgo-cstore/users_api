@@ -15,12 +15,12 @@ func NewUserRepository(mySqlConn *sqlx.DB) *UserRepository {
 	}
 }
 
-func (ur *UserRepository) GetUsers() ([]models.User, error) {
+func (ur *UserRepository) GetUsers() ([]*models.User, error) {
 	sql := `
 		SELECT * FROM users
 	`
 
-	var users []models.User
+	var users []*models.User
 	if err := ur.MySqlConn.Select(&users, sql); err != nil {
 		return nil, err
 	}
@@ -28,17 +28,39 @@ func (ur *UserRepository) GetUsers() ([]models.User, error) {
 	return users, nil
 }
 
-func (ur *UserRepository) AddUser(user models.User) error {
+func (ur *UserRepository) GetUser(email string) (*models.User, error) {
+	var user []*models.User
+
 	sql := `
-		INSERT INTO users
-		(fullName, email, hashPassword, isActivated, role) VALUE 
-		(?, ?, ?, ?, ?)
+		SELECT * FROM users
+		WHERE email = ?
 	`
 
-	args := make([]interface{}, 5)
-	args = append(args, user.FullName, user.Email, user.HashPassword, user.IsActivated, user.Role)
+	if err := ur.MySqlConn.Select(&user, sql, email); err != nil {
+		return nil, err
+	}
 
-	if _, err := ur.MySqlConn.Exec(sql, args); err != nil {
+	if len(user) < 1 {
+		return nil, nil
+	}
+
+	return user[0], nil
+}
+
+func (ur *UserRepository) SaveUser(user *models.User) error {
+	sql := `
+		INSERT INTO users
+		(fullName, email, hashPassword, isActivated, activationLink, role, refreshToken) VALUE 
+		(?, ?, ?, ?, ?, ?, ?)
+	`
+	var args []interface{}
+	args = append(args,
+		user.FullName, user.Email,
+		user.HashPassword, user.IsActivated,
+		user.ActivationLink, user.Role, user.RefreshToken,
+	)
+
+	if _, err := ur.MySqlConn.Exec(sql, args...); err != nil {
 		return err
 	}
 
