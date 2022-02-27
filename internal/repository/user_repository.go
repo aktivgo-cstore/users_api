@@ -67,16 +67,23 @@ func (ur *UserRepository) SaveUser(user *models.User) error {
 	return nil
 }
 
-func (ur *UserRepository) DeleteUser(id int) error {
+func (ur *UserRepository) DeleteUser(id int) (int64, error) {
 	sql := `
 		DELETE FROM users
 		WHERE users.id = ?
 	`
 
-	_, err := ur.MySqlConn.Exec(sql, id)
+	var count int64
+
+	result, err := ur.MySqlConn.Exec(sql, id)
 	if err != nil {
-		return err
+		return count, err
 	}
 
-	return nil
+	count, err = result.RowsAffected()
+	if err != nil {
+		return count, err
+	}
+
+	return count, nil
 }

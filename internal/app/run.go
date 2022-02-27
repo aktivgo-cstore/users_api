@@ -5,8 +5,9 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"users_api/internal/handler"
+	"users_api/internal/controllers"
 	"users_api/internal/repository"
+	"users_api/internal/service"
 	"users_api/internal/storage/mysql"
 )
 
@@ -22,14 +23,15 @@ func Run() error {
 		return err
 	}
 	userRepository := repository.NewUserRepository(mySqlConn)
-	h := handler.NewHandler(userRepository)
+	userService := service.NewUserService(userRepository)
+	userController := controllers.NewUserController(userService)
 
-	router.HandleFunc("/registration", h.HandleRegistration).Methods("POST")
-	router.HandleFunc("/login", h.HandleLogin).Methods("POST")
-	router.HandleFunc("/logout", h.HandleLogout).Methods("POST")
-	router.HandleFunc("/delete", h.HandleDelete).Methods("POST")
-	router.HandleFunc("/refresh", h.HandleRefresh).Methods("GET")
-	router.HandleFunc("/users", h.HandleUsers).Methods("GET")
+	router.HandleFunc("/registration", userController.Registration).Methods("POST")
+	router.HandleFunc("/login", userController.Login).Methods("POST")
+	router.HandleFunc("/logout", userController.Logout).Methods("POST")
+	router.HandleFunc("/delete", userController.DeleteUser).Methods("POST")
+	router.HandleFunc("/refresh", userController.RefreshAccessToken).Methods("GET")
+	router.HandleFunc("/users", userController.GetUsers).Methods("GET")
 
 	log.Println("Users api server started on port " + port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {
