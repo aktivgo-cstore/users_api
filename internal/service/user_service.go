@@ -2,9 +2,14 @@ package service
 
 import (
 	"fmt"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+	"log"
+	"users_api/internal/dto"
 	"users_api/internal/errors"
 	"users_api/internal/models"
 	"users_api/internal/repository"
+	"users_api/internal/types"
 )
 
 type UserService struct {
@@ -17,23 +22,68 @@ func NewUserService(userRepository *repository.UserRepository) *UserService {
 	}
 }
 
-func (us *UserService) Register(user *models.User) (string, *errors.ApiError) {
-	candidate, err := us.UserRepository.GetUser(user.Email)
+func (us *UserService) Register(userData *dto.UserData) (*types.Tokens, *errors.ApiError) {
+	candidate, err := us.UserRepository.GetUserByEmail(userData.Email)
 	if err != nil {
-		return "", errors.InternalServerError(err)
+		return nil, errors.InternalServerError(err)
 	}
 
 	if candidate != nil {
-		return "", errors.BadRequestError(fmt.Sprintf("user with email %s user.Email already exists", user.Email), nil)
+		return nil, errors.BadRequestError(fmt.Sprintf("Пользователь с электронной почтой %s уже существует", userData.Email),
+			fmt.Errorf("пользователь с электронной почтой %s уже существует", userData.Email))
 	}
 
-	user.RefreshToken = "123"
-
-	if err = us.UserRepository.SaveUser(user); err != nil {
-		return "", errors.InternalServerError(err)
+	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userData.Password), 3)
+	if err != nil {
+		return nil, errors.InternalServerError(err)
 	}
 
-	return user.RefreshToken, nil
+	activationLink := uuid.New().String()
+
+	if err = SendActivationMail(userData.Email, apiUrl+":"+apiPort+"/activate/"+activationLink); err != nil {
+		log.Println("unable to send mail: " + err.Error())
+		return nil, errors.InternalServerError(err)
+	}
+
+	user := &models.User{
+		FullName:       userData.FullName,
+		Email:          userData.Email,
+		HashPassword:   string(hashPassword),
+		IsActivated:    0,
+		ActivationLink: activationLink,
+		Role:           "user",
+	}
+
+	id, err := us.UserRepository.SaveUser(user)
+	if err != nil {
+		return nil, errors.InternalServerError(err)
+	}
+
+	tokenData := dto.NewTokenData(id, user.Email, user.Role)
+	tokens, err := GenerateTokens(tokenData)
+
+	if err = us.UserRepository.SaveToken(id, tokens.RefreshToken); err != nil {
+		return nil, errors.InternalServerError(err)
+	}
+
+	return tokens, nil
+}
+
+func (us *UserService) Activate(activationLink string) *errors.ApiError {
+	user, err := us.UserRepository.GetUserByActivationLink(activationLink)
+	if err != nil {
+		return errors.InternalServerError(err)
+	}
+
+	if user == nil {
+		return errors.BadRequestError("Неккоректная ссылка активации", fmt.Errorf("неккоректная ссылка активации"))
+	}
+
+	if err = us.UserRepository.Activate(user.ID); err != nil {
+		return errors.InternalServerError(err)
+	}
+
+	return nil
 }
 
 func (us *UserService) GetUsers() ([]*models.User, *errors.ApiError) {
@@ -45,14 +95,15 @@ func (us *UserService) GetUsers() ([]*models.User, *errors.ApiError) {
 	return users, nil
 }
 
-func (us *UserService) DeleteUser(id int) *errors.ApiError {
-	count, err := us.UserRepository.DeleteUser(id)
+func (us *UserService) DeleteUser(email string) *errors.ApiError {
+	count, err := us.UserRepository.DeleteUser(email)
 	if err != nil {
 		return errors.InternalServerError(err)
 	}
-	
+
 	if count < 1 {
-		return errors.BadRequestError(fmt.Sprintf("user with id %d is not exists", id), nil)
+		return errors.BadRequestError(fmt.Sprintf("Пользователя с электронной почтой %s не существует", email),
+			fmt.Errorf("пользователя с электронной почтой %s не существует", email))
 	}
 
 	return nil

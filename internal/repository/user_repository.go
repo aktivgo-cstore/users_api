@@ -28,7 +28,7 @@ func (ur *UserRepository) GetUsers() ([]*models.User, error) {
 	return users, nil
 }
 
-func (ur *UserRepository) GetUser(email string) (*models.User, error) {
+func (ur *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	var user []*models.User
 
 	sql := `
@@ -47,7 +47,26 @@ func (ur *UserRepository) GetUser(email string) (*models.User, error) {
 	return user[0], nil
 }
 
-func (ur *UserRepository) SaveUser(user *models.User) error {
+func (ur *UserRepository) GetUserByActivationLink(activationLink string) (*models.User, error) {
+	var user []*models.User
+
+	sql := `
+		SELECT * FROM users
+		WHERE activationLink = ?
+	`
+
+	if err := ur.MySqlConn.Select(&user, sql, activationLink); err != nil {
+		return nil, err
+	}
+
+	if len(user) < 1 {
+		return nil, nil
+	}
+
+	return user[0], nil
+}
+
+func (ur *UserRepository) SaveUser(user *models.User) (int64, error) {
 	sql := `
 		INSERT INTO users
 		(fullName, email, hashPassword, isActivated, activationLink, role, refreshToken) VALUE 
@@ -60,22 +79,49 @@ func (ur *UserRepository) SaveUser(user *models.User) error {
 		user.ActivationLink, user.Role, user.RefreshToken,
 	)
 
-	if _, err := ur.MySqlConn.Exec(sql, args...); err != nil {
+	result, err := ur.MySqlConn.Exec(sql, args...)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.LastInsertId()
+}
+
+func (ur *UserRepository) SaveToken(userId int64, refreshToken string) error {
+	sql := `
+		UPDATE users
+		SET refreshToken = ?
+		WHERE id = ?
+	`
+	if _, err := ur.MySqlConn.Exec(sql, refreshToken, userId); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (ur *UserRepository) DeleteUser(id int) (int64, error) {
+func (ur *UserRepository) Activate(userId int64) error {
+	sql := `
+		UPDATE users
+		SET isActivated = 1
+		WHERE id = ?
+	`
+	if _, err := ur.MySqlConn.Exec(sql, userId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ur *UserRepository) DeleteUser(email string) (int64, error) {
 	sql := `
 		DELETE FROM users
-		WHERE users.id = ?
+		WHERE email = ?
 	`
 
 	var count int64
 
-	result, err := ur.MySqlConn.Exec(sql, id)
+	result, err := ur.MySqlConn.Exec(sql, email)
 	if err != nil {
 		return count, err
 	}

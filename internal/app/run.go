@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	port         = os.Getenv("PORT")
+	port         = os.Getenv("API_PORT")
 	mySqlConnStr = os.Getenv("MYSQL_CONN_STR")
 )
 
@@ -27,6 +27,7 @@ func Run() error {
 	userController := controllers.NewUserController(userService)
 
 	router.HandleFunc("/registration", userController.Registration).Methods("POST")
+	router.HandleFunc("/activate/{link}", userController.Activate).Methods("GET")
 	router.HandleFunc("/login", userController.Login).Methods("POST")
 	router.HandleFunc("/logout", userController.Logout).Methods("POST")
 	router.HandleFunc("/delete", userController.DeleteUser).Methods("POST")

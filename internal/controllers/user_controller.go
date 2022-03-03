@@ -3,13 +3,19 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
 	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"users_api/internal/dto"
 	"users_api/internal/helpers"
-	"users_api/internal/models"
 	"users_api/internal/service"
+)
+
+var (
+	clientURL = os.Getenv("CLIENT_URL")
 )
 
 type UserController struct {
@@ -24,28 +30,42 @@ func NewUserController(userService *service.UserService) *UserController {
 
 func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		log.Println("unable to read request body: " + err.Error())
-		helpers.ErrorResponse(w, "unable to read request body: "+err.Error(), http.StatusInternalServerError)
+		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
 		return
 	}
 
-	var user *models.User
-	if err := json.Unmarshal(body, &user); err != nil {
-		helpers.ErrorResponse(w, "unable to decode request body: "+err.Error(), http.StatusInternalServerError)
+	var userData *dto.UserData
+	if err = json.Unmarshal(body, &userData); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
-	accessToken, error := uc.UserService.Register(user)
-	if err != nil {
-		helpers.ErrorResponse(w, "unable to register user: "+err.Error(), http.StatusInternalServerError)
+	tokens, er := uc.UserService.Register(userData)
+	if er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
 
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"accessToken": "%s"}`, accessToken)))
+	w.WriteHeader(http.StatusCreated)
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"accessToken": "%s", "refreshToken": "%s"}`, tokens.AccessToken, tokens.RefreshToken)))
+}
+
+func (uc *UserController) Activate(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	activationLink := mux.Vars(r)["link"]
+
+	if er := uc.UserService.Activate(activationLink); er != nil {
+		log.Println("unable to activate user: " + er.Error.Error())
+		helpers.ErrorResponse(w, er.Message, er.Status)
+	}
+
+	http.Redirect(w, r, clientURL, http.StatusSeeOther)
 }
 
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
@@ -64,24 +84,27 @@ func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
 
 func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		helpers.ErrorResponse(w, "unable to read request body: "+err.Error(), http.StatusBadRequest)
+		log.Println("unable to read request body: " + err.Error())
+		helpers.ErrorResponse(w, "ошибка при чтении тела запроса", http.StatusBadRequest)
 		return
 	}
 
-	var decoded map[string]int
-	if err := json.Unmarshal(body, &decoded); err != nil {
-		helpers.ErrorResponse(w, "unable to decode request body: "+err.Error(), http.StatusInternalServerError)
+	var decoded map[string]string
+	if err = json.Unmarshal(body, &decoded); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "ошибка при декодировании тела запроса", http.StatusInternalServerError)
 		return
 	}
 
-	if err := uc.UserService.DeleteUser(decoded["id"]); err != nil {
-		helpers.ErrorResponse(w, "unable to delete user: "+err.Error(), http.StatusInternalServerError)
+	if er := uc.UserService.DeleteUser(decoded["email"]); er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (uc *UserController) RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
@@ -93,16 +116,20 @@ func (uc *UserController) RefreshAccessToken(w http.ResponseWriter, r *http.Requ
 
 func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
 
-	users, err := uc.UserService.GetUsers()
+	users, er := uc.UserService.GetUsers()
+	if er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	encode, err := json.Marshal(users)
 	if err != nil {
-		helpers.ErrorResponse(w, "unable to get users: "+err.Error(), http.StatusInternalServerError)
+		log.Println("unable to encode users: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
-	if err = json.NewEncoder(w).Encode(users); err != nil {
-		helpers.ErrorResponse(w, "unable to encode users: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(encode)
 }
