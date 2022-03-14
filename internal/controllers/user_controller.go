@@ -107,13 +107,6 @@ func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func (uc *UserController) RefreshAccessToken(w http.ResponseWriter, r *http.Request) {
-	_, err := io.WriteString(w, "Hello from refresh")
-	if err != nil {
-		log.Fatalln("Unable to write string. Error: " + err.Error())
-	}
-}
-
 func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 

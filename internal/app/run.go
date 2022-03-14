@@ -31,7 +31,6 @@ func Run() error {
 	router.HandleFunc("/login", userController.Login).Methods("POST")
 	router.HandleFunc("/logout", userController.Logout).Methods("POST")
 	router.HandleFunc("/delete", userController.DeleteUser).Methods("POST")
-	router.HandleFunc("/refresh", userController.RefreshAccessToken).Methods("GET")
 	router.HandleFunc("/users", userController.GetUsers).Methods("GET")
 
 	log.Println("Users api server started on port " + port)

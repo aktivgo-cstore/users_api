@@ -5,15 +5,13 @@ import (
 	"os"
 	"time"
 	"users_api/internal/dto"
-	"users_api/internal/types"
 )
 
 var (
-	accessKey  = os.Getenv("JWT_ACCESS_SECRET")
-	refreshKey = os.Getenv("JWT_REFRESH_SECRET")
+	accessKey = os.Getenv("JWT_ACCESS_SECRET")
 )
 
-func GenerateTokens(tokenData *dto.TokenData) (*types.Tokens, error) {
+func GenerateToken(tokenData *dto.TokenData) (string, error) {
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":    tokenData.ID,
 		"email": tokenData.Email,
@@ -23,25 +21,8 @@ func GenerateTokens(tokenData *dto.TokenData) (*types.Tokens, error) {
 
 	accessTokenString, err := accessToken.SignedString([]byte(accessKey))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":    tokenData.ID,
-		"email": tokenData.Email,
-		"role":  tokenData.Role,
-		"exp":   time.Now().Add(time.Hour * 24 * 30).Unix(),
-	})
-
-	refreshTokenString, err := refreshToken.SignedString([]byte(refreshKey))
-	if err != nil {
-		return nil, err
-	}
-
-	tokens := &types.Tokens{
-		AccessToken:  accessTokenString,
-		RefreshToken: refreshTokenString,
-	}
-
-	return tokens, nil
+	return accessTokenString, nil
 }

@@ -60,7 +60,7 @@ func (us *UserService) Register(userData *dto.UserData) (*types.Tokens, *errors.
 	}
 
 	tokenData := dto.NewTokenData(id, user.Email, user.Role)
-	tokens, err := GenerateTokens(tokenData)
+	tokens, err := GenerateToken(tokenData)
 
 	if err = us.UserRepository.SaveToken(id, tokens.RefreshToken); err != nil {
 		return nil, errors.InternalServerError(err)
