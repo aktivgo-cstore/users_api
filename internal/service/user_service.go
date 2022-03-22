@@ -9,7 +9,6 @@ import (
 	"users_api/internal/errors"
 	"users_api/internal/models"
 	"users_api/internal/repository"
-	"users_api/internal/types"
 )
 
 type UserService struct {
@@ -22,27 +21,27 @@ func NewUserService(userRepository *repository.UserRepository) *UserService {
 	}
 }
 
-func (us *UserService) Register(userData *dto.UserData) (*types.Tokens, *errors.ApiError) {
+func (us *UserService) Register(userData *dto.UserData) (string, *errors.ApiError) {
 	candidate, err := us.UserRepository.GetUserByEmail(userData.Email)
 	if err != nil {
-		return nil, errors.InternalServerError(err)
+		return "", errors.InternalServerError(err)
 	}
 
 	if candidate != nil {
-		return nil, errors.BadRequestError(fmt.Sprintf("Пользователь с электронной почтой %s уже существует", userData.Email),
+		return "", errors.BadRequestError(fmt.Sprintf("Пользователь с электронной почтой %s уже существует", userData.Email),
 			fmt.Errorf("пользователь с электронной почтой %s уже существует", userData.Email))
 	}
 
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userData.Password), 3)
 	if err != nil {
-		return nil, errors.InternalServerError(err)
+		return "", errors.InternalServerError(err)
 	}
 
 	activationLink := uuid.New().String()
 
 	if err = SendActivationMail(userData.Email, apiUrl+":"+apiPort+"/activate/"+activationLink); err != nil {
 		log.Println("unable to send mail: " + err.Error())
-		return nil, errors.InternalServerError(err)
+		return "", errors.InternalServerError(err)
 	}
 
 	user := &models.User{
@@ -56,17 +55,17 @@ func (us *UserService) Register(userData *dto.UserData) (*types.Tokens, *errors.
 
 	id, err := us.UserRepository.SaveUser(user)
 	if err != nil {
-		return nil, errors.InternalServerError(err)
+		return "", errors.InternalServerError(err)
 	}
 
 	tokenData := dto.NewTokenData(id, user.Email, user.Role)
-	tokens, err := GenerateToken(tokenData)
+	token, err := GenerateToken(tokenData)
 
-	if err = us.UserRepository.SaveToken(id, tokens.RefreshToken); err != nil {
-		return nil, errors.InternalServerError(err)
+	if err = us.UserRepository.SaveToken(id, token); err != nil {
+		return "", errors.InternalServerError(err)
 	}
 
-	return tokens, nil
+	return token, nil
 }
 
 func (us *UserService) Activate(activationLink string) *errors.ApiError {

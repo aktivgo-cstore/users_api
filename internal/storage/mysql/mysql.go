@@ -12,7 +12,9 @@ func CreateConnection(mysqlConnStr string) (*sqlx.DB, error) {
 	var mysqlConn *sqlx.DB
 	var err error
 
-	for i := 0; i < 12; i++ {
+	mysqlConnStr = "root:root@tcp(127.0.0.1:3306)/cstore"
+
+	for i := 0; i < 1; i++ {
 		log.Println("Try to connect to mysql... Attempt " + strconv.Itoa(i+1))
 		mysqlConn, err = sqlx.Connect("mysql", mysqlConnStr)
 		if err == nil {

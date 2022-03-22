@@ -45,14 +45,14 @@ func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, er := uc.UserService.Register(userData)
+	token, er := uc.UserService.Register(userData)
 	if er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"accessToken": "%s", "refreshToken": "%s"}`, tokens.AccessToken, tokens.RefreshToken)))
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"accessToken": "%s"}`, token)))
 }
 
 func (uc *UserController) Activate(w http.ResponseWriter, r *http.Request) {
