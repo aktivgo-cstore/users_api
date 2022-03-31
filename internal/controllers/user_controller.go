@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/mux"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -38,21 +37,21 @@ func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userData *dto.UserData
-	if err = json.Unmarshal(body, &userData); err != nil {
+	var userRegistrationData *dto.UserRegistrationData
+	if err = json.Unmarshal(body, &userRegistrationData); err != nil {
 		log.Println("unable to decode request body: " + err.Error())
 		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
-	token, er := uc.UserService.Register(userData)
+	token, er := uc.UserService.Register(userRegistrationData)
 	if er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"accessToken": "%s"}`, token)))
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"token": "%s"}`, token)))
 }
 
 func (uc *UserController) Activate(w http.ResponseWriter, r *http.Request) {
@@ -61,25 +60,65 @@ func (uc *UserController) Activate(w http.ResponseWriter, r *http.Request) {
 	activationLink := mux.Vars(r)["link"]
 
 	if er := uc.UserService.Activate(activationLink); er != nil {
-		log.Println("unable to activate user: " + er.Error.Error())
 		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
 	}
 
 	http.Redirect(w, r, clientURL, http.StatusSeeOther)
 }
 
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
-	_, err := io.WriteString(w, "Hello from login")
+	w.Header().Set("Content-Type", "application/json")
+
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Fatalln("Unable to write string. Error: " + err.Error())
+		log.Println("unable to read request body: " + err.Error())
+		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
+		return
 	}
+
+	var userLoginData *dto.UserLoginData
+	if err = json.Unmarshal(body, &userLoginData); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	token, userData, er := uc.UserService.Login(userLoginData.Email, userLoginData.Password)
+	if er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(fmt.Sprintf(
+		`{"token": "%s", "id": "%d", "email": "%s", "is_activated": "%d", "role": "%s"}`,
+		token, userData.ID, userData.Email, userData.IsActivated, userData.Role)))
 }
 
 func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
-	_, err := io.WriteString(w, "Hello from logout")
+	w.Header().Set("Content-Type", "application/json")
+
+	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Fatalln("Unable to write string. Error: " + err.Error())
+		log.Println("unable to read request body: " + err.Error())
+		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
+		return
 	}
+
+	var userLogoutData *dto.UserLogoutData
+	if err = json.Unmarshal(body, &userLogoutData); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if er := uc.UserService.Logout(userLogoutData.Token); er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {

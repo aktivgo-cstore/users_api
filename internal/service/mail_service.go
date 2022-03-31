@@ -17,7 +17,7 @@ var (
 	password = os.Getenv("SMTP_PASSWORD")
 )
 
-func SendActivationMail(to string, link string) error {
+func SendActivationMail(to string, name string, link string) error {
 	server := mail.NewSMTPClient()
 
 	port, err := strconv.Atoi(port)
@@ -43,7 +43,10 @@ func SendActivationMail(to string, link string) error {
 
 	email := mail.NewMSG()
 	email.SetFrom(user).AddTo(to).SetSubject("Активация аккаунта на " + apiUrl)
-	htmlBody := fmt.Sprintf(`<div><h1>Для активации перейдите по ссылке</h1><a href="%s">%s</a></div>`, link, link)
+	htmlBody := fmt.Sprintf(
+		`<div><h1>Уважаемый(ая) %s, для активации перейдите по ссылке</h1><a href="%s">%s</a></div>`,
+		name, link, link,
+	)
 	email.SetBody(mail.TextHTML, htmlBody)
 
 	if email.Error != nil {

@@ -69,14 +69,14 @@ func (ur *UserRepository) GetUserByActivationLink(activationLink string) (*model
 func (ur *UserRepository) SaveUser(user *models.User) (int64, error) {
 	sql := `
 		INSERT INTO users
-		(fullName, email, hashPassword, isActivated, activationLink, role, refreshToken) VALUE 
+		(fullName, email, hashPassword, token, isActivated, activationLink, role) VALUE 
 		(?, ?, ?, ?, ?, ?, ?)
 	`
 	var args []interface{}
 	args = append(args,
 		user.FullName, user.Email,
-		user.HashPassword, user.IsActivated,
-		user.ActivationLink, user.Role, user.RefreshToken,
+		user.HashPassword, user.Token,
+		user.IsActivated, user.ActivationLink, user.Role,
 	)
 
 	result, err := ur.MySqlConn.Exec(sql, args...)
@@ -87,13 +87,26 @@ func (ur *UserRepository) SaveUser(user *models.User) (int64, error) {
 	return result.LastInsertId()
 }
 
-func (ur *UserRepository) SaveToken(userId int64, refreshToken string) error {
+func (ur *UserRepository) SaveToken(userId int64, token string) error {
 	sql := `
 		UPDATE users
-		SET refreshToken = ?
+		SET token = ?
 		WHERE id = ?
 	`
-	if _, err := ur.MySqlConn.Exec(sql, refreshToken, userId); err != nil {
+	if _, err := ur.MySqlConn.Exec(sql, token, userId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ur *UserRepository) RemoveToken(token string) error {
+	sql := `
+		UPDATE users
+		SET token = null
+		WHERE token = ?
+	`
+	if _, err := ur.MySqlConn.Exec(sql, token); err != nil {
 		return err
 	}
 
