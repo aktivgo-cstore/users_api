@@ -81,7 +81,7 @@ func (ur *UserRepository) SaveUser(user *models.User) (int64, error) {
 
 	result, err := ur.MySqlConn.Exec(sql, args...)
 	if err != nil {
-		return 0, err
+		return -1, err
 	}
 
 	return result.LastInsertId()
