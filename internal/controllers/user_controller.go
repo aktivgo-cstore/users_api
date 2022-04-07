@@ -96,7 +96,7 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 		token, userData.ID, userData.Email, userData.IsActivated, userData.Role)))
 }
 
-func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
+func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	body, err := ioutil.ReadAll(r.Body)
@@ -106,19 +106,19 @@ func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userLogoutData *dto.UserLogoutData
-	if err = json.Unmarshal(body, &userLogoutData); err != nil {
+	var userUpdateData *dto.UserUpdateData
+	if err = json.Unmarshal(body, &userUpdateData); err != nil {
 		log.Println("unable to decode request body: " + err.Error())
 		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
 		return
 	}
 
-	if er := uc.UserService.Logout(userLogoutData.Token); er != nil {
+	if er := uc.UserService.UpdateUser(userUpdateData); er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +139,56 @@ func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if er := uc.UserService.DeleteUser(decoded["email"]); er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+}
+
+func (uc *UserController) RestorePassword(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("unable to read request body: " + err.Error())
+		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
+		return
+	}
+
+	var userRestorePasswordData *dto.UserRestorePasswordData
+	if err = json.Unmarshal(body, &userRestorePasswordData); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if er := uc.UserService.RestorePassword(userRestorePasswordData); er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	body, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		log.Println("unable to read request body: " + err.Error())
+		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
+		return
+	}
+
+	var userLogoutData *dto.UserLogoutData
+	if err = json.Unmarshal(body, &userLogoutData); err != nil {
+		log.Println("unable to decode request body: " + err.Error())
+		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
+		return
+	}
+
+	if er := uc.UserService.Logout(userLogoutData.Token); er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}

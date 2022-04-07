@@ -47,6 +47,25 @@ func (ur *UserRepository) GetUserByEmail(email string) (*models.User, error) {
 	return user[0], nil
 }
 
+func (ur *UserRepository) GetUserByID(id int64) (*models.User, error) {
+	var user []*models.User
+
+	sql := `
+		SELECT * FROM users
+		WHERE id = ?
+	`
+
+	if err := ur.MySqlConn.Select(&user, sql, id); err != nil {
+		return nil, err
+	}
+
+	if len(user) < 1 {
+		return nil, nil
+	}
+
+	return user[0], nil
+}
+
 func (ur *UserRepository) GetUserByActivationLink(activationLink string) (*models.User, error) {
 	var user []*models.User
 
@@ -94,6 +113,21 @@ func (ur *UserRepository) SaveToken(userId int64, token string) error {
 		WHERE id = ?
 	`
 	if _, err := ur.MySqlConn.Exec(sql, token, userId); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (ur *UserRepository) SetPassword(userID int64, hashPassword string) error {
+	sql := `
+		UPDATE users
+		SET hashPassword = ?
+		WHERE id = ?
+	`
+
+	_, err := ur.MySqlConn.Exec(sql, hashPassword, userID)
+	if err != nil {
 		return err
 	}
 

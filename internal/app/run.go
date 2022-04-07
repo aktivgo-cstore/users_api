@@ -23,14 +23,20 @@ func Run() error {
 		return err
 	}
 	userRepository := repository.NewUserRepository(mySqlConn)
-	userService := service.NewUserService(userRepository)
+	mailService, err := service.CreateMailService()
+	if err != nil {
+		return err
+	}
+	userService := service.NewUserService(mailService, userRepository)
 	userController := controllers.NewUserController(userService)
 
 	router.HandleFunc("/registration", userController.Registration).Methods("POST")
 	router.HandleFunc("/activate/{link}", userController.Activate).Methods("GET")
 	router.HandleFunc("/login", userController.Login).Methods("POST")
-	router.HandleFunc("/logout", userController.Logout).Methods("POST")
+	router.HandleFunc("/update", userController.UpdateUser).Methods("POST")
 	router.HandleFunc("/delete", userController.DeleteUser).Methods("POST")
+	router.HandleFunc("/restore", userController.RestorePassword).Methods("POST")
+	router.HandleFunc("/logout", userController.Logout).Methods("POST")
 	router.HandleFunc("/users", userController.GetUsers).Methods("GET")
 
 	log.Println("Users api server started on port " + port)
