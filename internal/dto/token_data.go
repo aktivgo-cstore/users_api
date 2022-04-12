@@ -1,13 +1,13 @@
 package dto
 
 type TokenData struct {
-	ID          int64
+	ID          int
 	Email       string
 	IsActivated int
 	Role        string
 }
 
-func NewTokenData(id int64, email string, isActivated int, role string) *TokenData {
+func NewTokenData(id int, email string, isActivated int, role string) *TokenData {
 	return &TokenData{
 		ID:          id,
 		Email:       email,

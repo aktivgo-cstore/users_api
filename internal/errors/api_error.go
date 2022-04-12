@@ -20,6 +20,10 @@ func UnauthorizedError() *ApiError {
 	return NewApiError(http.StatusUnauthorized, "Пользователь не авторизован", nil)
 }
 
+func ForbiddenError() *ApiError {
+	return NewApiError(http.StatusForbidden, "Доступ закрыт", nil)
+}
+
 func BadRequestError(message string, error error) *ApiError {
 	return NewApiError(http.StatusBadRequest, message, error)
 }

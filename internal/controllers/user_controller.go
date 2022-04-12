@@ -199,6 +199,17 @@ func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
 func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
+	token, er := service.GetToken(r.Header)
+	if er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
+	if er = service.CheckAccess(token); er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
 	users, er := uc.UserService.GetUsers()
 	if er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)

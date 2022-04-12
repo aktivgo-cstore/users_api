@@ -8,5 +8,5 @@ type User struct {
 	IsActivated    int         `db:"isActivated" json:"isActivated"`
 	ActivationLink interface{} `db:"activationLink" json:"activationLink"`
 	Role           string      `db:"role" json:"role"`
-	Token          interface{} `db:"token" json:"token"`
+	Token          string      `db:"token" json:"token"`
 }
