@@ -58,7 +58,7 @@ func (us *UserService) Register(userData *dto.UserRegistrationData) (string, *er
 		return "", errors.InternalServerError(err)
 	}
 
-	tokenData := dto.NewTokenData(id, user.Email, user.IsActivated, user.Role)
+	tokenData := dto.NewTokenData(int(id), user.Email, user.IsActivated, user.Role)
 	token, err := GenerateToken(tokenData)
 	if err != nil {
 		log.Println("unable to generate token: " + err.Error())
@@ -114,7 +114,7 @@ func (us *UserService) Login(email string, password string) (string, *dto.TokenD
 			fmt.Errorf("invalid password"))
 	}
 
-	tokenData := dto.NewTokenData(user.ID, user.Email, user.IsActivated, user.Role)
+	tokenData := dto.NewTokenData(int(user.ID), user.Email, user.IsActivated, user.Role)
 
 	token, err := GenerateToken(tokenData)
 	if err != nil {
