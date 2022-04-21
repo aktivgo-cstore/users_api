@@ -127,8 +127,6 @@ func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println(users[2].Token)
-
 	encode, err := json.Marshal(users)
 	if err != nil {
 		log.Println("unable to encode users: " + err.Error())
