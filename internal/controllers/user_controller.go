@@ -3,7 +3,6 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -54,19 +53,6 @@ func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(fmt.Sprintf(`{"token": "%s"}`, token)))
 }
 
-func (uc *UserController) Activate(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	activationLink := mux.Vars(r)["link"]
-
-	if er := uc.UserService.Activate(activationLink); er != nil {
-		helpers.ErrorResponse(w, er.Message, er.Status)
-		return
-	}
-
-	http.Redirect(w, r, clientURL, http.StatusSeeOther)
-}
-
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -94,81 +80,6 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(fmt.Sprintf(
 		`{"token": "%s", "id": "%d", "email": "%s", "is_activated": "%d", "role": "%s"}`,
 		token, userData.ID, userData.Email, userData.IsActivated, userData.Role)))
-}
-
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println("unable to read request body: " + err.Error())
-		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
-		return
-	}
-
-	var userUpdateData *dto.UserUpdateData
-	if err = json.Unmarshal(body, &userUpdateData); err != nil {
-		log.Println("unable to decode request body: " + err.Error())
-		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
-		return
-	}
-
-	if er := uc.UserService.UpdateUser(userUpdateData); er != nil {
-		helpers.ErrorResponse(w, er.Message, er.Status)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
-}
-
-func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println("unable to read request body: " + err.Error())
-		helpers.ErrorResponse(w, "ошибка при чтении тела запроса", http.StatusBadRequest)
-		return
-	}
-
-	var decoded map[string]string
-	if err = json.Unmarshal(body, &decoded); err != nil {
-		log.Println("unable to decode request body: " + err.Error())
-		helpers.ErrorResponse(w, "ошибка при декодировании тела запроса", http.StatusInternalServerError)
-		return
-	}
-
-	if er := uc.UserService.DeleteUser(decoded["email"]); er != nil {
-		helpers.ErrorResponse(w, er.Message, er.Status)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (uc *UserController) RestorePassword(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	body, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		log.Println("unable to read request body: " + err.Error())
-		helpers.ErrorResponse(w, "Некорректный запрос", http.StatusInternalServerError)
-		return
-	}
-
-	var userRestorePasswordData *dto.UserRestorePasswordData
-	if err = json.Unmarshal(body, &userRestorePasswordData); err != nil {
-		log.Println("unable to decode request body: " + err.Error())
-		helpers.ErrorResponse(w, "Внутренняя ошибка сервера", http.StatusInternalServerError)
-		return
-	}
-
-	if er := uc.UserService.RestorePassword(userRestorePasswordData); er != nil {
-		helpers.ErrorResponse(w, er.Message, er.Status)
-		return
-	}
-
-	w.WriteHeader(http.StatusCreated)
 }
 
 func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
@@ -215,6 +126,8 @@ func (uc *UserController) GetUsers(w http.ResponseWriter, r *http.Request) {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
+
+	log.Println(users[2].Token)
 
 	encode, err := json.Marshal(users)
 	if err != nil {

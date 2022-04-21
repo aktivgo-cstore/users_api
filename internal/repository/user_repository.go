@@ -66,25 +66,6 @@ func (ur *UserRepository) GetUserByID(id int64) (*models.User, error) {
 	return user[0], nil
 }
 
-func (ur *UserRepository) GetUserByActivationLink(activationLink string) (*models.User, error) {
-	var user []*models.User
-
-	sql := `
-		SELECT * FROM users
-		WHERE activationLink = ?
-	`
-
-	if err := ur.MySqlConn.Select(&user, sql, activationLink); err != nil {
-		return nil, err
-	}
-
-	if len(user) < 1 {
-		return nil, nil
-	}
-
-	return user[0], nil
-}
-
 func (ur *UserRepository) SaveUser(user *models.User) (int64, error) {
 	sql := `
 		INSERT INTO users
@@ -119,25 +100,10 @@ func (ur *UserRepository) SaveToken(userId int64, token string) error {
 	return nil
 }
 
-func (ur *UserRepository) SetPassword(userID int64, hashPassword string) error {
-	sql := `
-		UPDATE users
-		SET hashPassword = ?
-		WHERE id = ?
-	`
-
-	_, err := ur.MySqlConn.Exec(sql, hashPassword, userID)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (ur *UserRepository) RemoveToken(token string) error {
 	sql := `
 		UPDATE users
-		SET token = null
+		SET token = ""
 		WHERE token = ?
 	`
 	if _, err := ur.MySqlConn.Exec(sql, token); err != nil {
@@ -145,38 +111,4 @@ func (ur *UserRepository) RemoveToken(token string) error {
 	}
 
 	return nil
-}
-
-func (ur *UserRepository) Activate(userId int64) error {
-	sql := `
-		UPDATE users
-		SET isActivated = 1
-		WHERE id = ?
-	`
-	if _, err := ur.MySqlConn.Exec(sql, userId); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (ur *UserRepository) DeleteUser(email string) (int64, error) {
-	sql := `
-		DELETE FROM users
-		WHERE email = ?
-	`
-
-	var count int64
-
-	result, err := ur.MySqlConn.Exec(sql, email)
-	if err != nil {
-		return count, err
-	}
-
-	count, err = result.RowsAffected()
-	if err != nil {
-		return count, err
-	}
-
-	return count, nil
 }

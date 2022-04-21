@@ -12,13 +12,11 @@ import (
 )
 
 type UserService struct {
-	MailService    *MailService
 	UserRepository *repository.UserRepository
 }
 
-func NewUserService(mailService *MailService, userRepository *repository.UserRepository) *UserService {
+func NewUserService(userRepository *repository.UserRepository) *UserService {
 	return &UserService{
-		MailService:    mailService,
 		UserRepository: userRepository,
 	}
 }
@@ -70,31 +68,7 @@ func (us *UserService) Register(userData *dto.UserRegistrationData) (string, *er
 		return "", errors.InternalServerError(err)
 	}
 
-	if err = us.MailService.SendActivationMail(userData.Email, user.FullName, apiUrl+":"+apiPort+"/activate/"+activationLink); err != nil {
-		log.Println("unable to send mail: " + err.Error())
-		return "", errors.InternalServerError(err)
-	}
-
 	return token, nil
-}
-
-func (us *UserService) Activate(activationLink string) *errors.ApiError {
-	user, err := us.UserRepository.GetUserByActivationLink(activationLink)
-	if err != nil {
-		log.Println("unable to get user by activation link: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if user == nil {
-		return errors.BadRequestError("Некорректная ссылка активации", fmt.Errorf("invalid activation link"))
-	}
-
-	if err = us.UserRepository.Activate(user.ID); err != nil {
-		log.Println("unable to activate user: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	return nil
 }
 
 func (us *UserService) Login(email string, password string) (string, *dto.TokenData, *errors.ApiError) {
@@ -128,80 +102,6 @@ func (us *UserService) Login(email string, password string) (string, *dto.TokenD
 	}
 
 	return token, tokenData, nil
-}
-
-func (us *UserService) UpdateUser(userUpdateData *dto.UserUpdateData) *errors.ApiError {
-	user, err := us.UserRepository.GetUserByID(userUpdateData.ID)
-	if err != nil {
-		log.Println("unable to get user by id: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if user == nil {
-		return errors.BadRequestError(fmt.Sprintf("Пользователя с id %d не существует", userUpdateData.ID),
-			fmt.Errorf("the user with the id %d does not exist", userUpdateData.ID))
-	}
-
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userUpdateData.Password), 3)
-	if err != nil {
-		log.Println("unable to hash password: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if err = us.UserRepository.SetPassword(user.ID, string(hashPassword)); err != nil {
-		log.Println("unable to set temporary password: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	return nil
-}
-
-func (us *UserService) DeleteUser(email string) *errors.ApiError {
-	count, err := us.UserRepository.DeleteUser(email)
-	if err != nil {
-		log.Println("unable to delete user: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if count < 1 {
-		return errors.BadRequestError(fmt.Sprintf("Пользователя с электронной почтой %s не существует", email),
-			fmt.Errorf("the user with the email %s does not exist", email))
-	}
-
-	return nil
-}
-
-func (us *UserService) RestorePassword(userRestorePasswordData *dto.UserRestorePasswordData) *errors.ApiError {
-	user, err := us.UserRepository.GetUserByEmail(userRestorePasswordData.Email)
-	if err != nil {
-		log.Println("unable to get user by email: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if user == nil {
-		return errors.BadRequestError(fmt.Sprintf("Пользователя с электронной почтой %s не существует", userRestorePasswordData.Email),
-			fmt.Errorf("the user with the email %s does not exist", userRestorePasswordData.Email))
-	}
-
-	tempPassword := uuid.NewString()
-
-	hashPassword, err := bcrypt.GenerateFromPassword([]byte(tempPassword), 3)
-	if err != nil {
-		log.Println("unable to hash password: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if err = us.UserRepository.SetPassword(user.ID, string(hashPassword)); err != nil {
-		log.Println("unable to set temporary password: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	if err = us.MailService.SendRestorePasswordMail(user.Email, user.FullName, tempPassword); err != nil {
-		log.Println("unable to send mail: " + err.Error())
-		return errors.InternalServerError(err)
-	}
-
-	return nil
 }
 
 func (us *UserService) Logout(token string) *errors.ApiError {
