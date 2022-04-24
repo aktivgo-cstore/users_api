@@ -113,6 +113,16 @@ func (us *UserService) Logout(token string) *errors.ApiError {
 	return nil
 }
 
+func (us *UserService) GetUserByID(userID int) (*models.User, *errors.ApiError) {
+	user, err := us.UserRepository.GetUserByID(int64(userID))
+	if err != nil {
+		log.Println("unable to get user: " + err.Error())
+		return nil, errors.InternalServerError(err)
+	}
+
+	return user, nil
+}
+
 func (us *UserService) GetUsers() ([]*models.User, *errors.ApiError) {
 	users, err := us.UserRepository.GetUsers()
 	if err != nil {

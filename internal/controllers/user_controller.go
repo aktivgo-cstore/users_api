@@ -50,7 +50,9 @@ func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"token": "%s", "id": "%d"}`, token, userID)))
+	_, _ = w.Write([]byte(fmt.Sprintf(
+		`{"id": "%d", "token": "%s", "fullName": "%s"}`,
+		userID, token, userRegistrationData.FullName)))
 }
 
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
@@ -76,10 +78,16 @@ func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	user, er := uc.UserService.GetUserByID(userData.ID)
+	if er != nil {
+		helpers.ErrorResponse(w, er.Message, er.Status)
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(fmt.Sprintf(
-		`{"token": "%s", "id": "%d", "email": "%s", "is_activated": "%d", "role": "%s"}`,
-		token, userData.ID, userData.Email, userData.IsActivated, userData.Role)))
+		`{"token": "%s", "id": "%d", "fullName": "%s", "email": "%s", "is_activated": "%d", "role": "%s"}`,
+		token, userData.ID, user.FullName, userData.Email, userData.IsActivated, userData.Role)))
 }
 
 func (uc *UserController) Logout(w http.ResponseWriter, r *http.Request) {
