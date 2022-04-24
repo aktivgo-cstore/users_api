@@ -43,14 +43,14 @@ func (uc *UserController) Registration(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, er := uc.UserService.Register(userRegistrationData)
+	userID, token, er := uc.UserService.Register(userRegistrationData)
 	if er != nil {
 		helpers.ErrorResponse(w, er.Message, er.Status)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	_, _ = w.Write([]byte(fmt.Sprintf(`{"token": "%s"}`, token)))
+	_, _ = w.Write([]byte(fmt.Sprintf(`{"token": "%s", "id": "%d"}`, token, userID)))
 }
 
 func (uc *UserController) Login(w http.ResponseWriter, r *http.Request) {

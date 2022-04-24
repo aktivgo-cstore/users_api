@@ -21,22 +21,22 @@ func NewUserService(userRepository *repository.UserRepository) *UserService {
 	}
 }
 
-func (us *UserService) Register(userData *dto.UserRegistrationData) (string, *errors.ApiError) {
+func (us *UserService) Register(userData *dto.UserRegistrationData) (int, string, *errors.ApiError) {
 	candidate, err := us.UserRepository.GetUserByEmail(userData.Email)
 	if err != nil {
 		log.Println("unable to get user by email: " + err.Error())
-		return "", errors.InternalServerError(err)
+		return -1, "", errors.InternalServerError(err)
 	}
 
 	if candidate != nil {
-		return "", errors.BadRequestError(fmt.Sprintf("Пользователь с электронной почтой %s уже существует", userData.Email),
+		return -1, "", errors.BadRequestError(fmt.Sprintf("Пользователь с электронной почтой %s уже существует", userData.Email),
 			fmt.Errorf("the user with the email %s already exists", userData.Email))
 	}
 
 	hashPassword, err := bcrypt.GenerateFromPassword([]byte(userData.Password), 3)
 	if err != nil {
 		log.Println("unable to hash password: " + err.Error())
-		return "", errors.InternalServerError(err)
+		return -1, "", errors.InternalServerError(err)
 	}
 
 	activationLink := uuid.New().String()
@@ -53,22 +53,22 @@ func (us *UserService) Register(userData *dto.UserRegistrationData) (string, *er
 	id, err := us.UserRepository.SaveUser(user)
 	if err != nil {
 		log.Println("unable to save user: " + err.Error())
-		return "", errors.InternalServerError(err)
+		return -1, "", errors.InternalServerError(err)
 	}
 
 	tokenData := dto.NewTokenData(int(id), user.Email, user.IsActivated, user.Role)
 	token, err := GenerateToken(tokenData)
 	if err != nil {
 		log.Println("unable to generate token: " + err.Error())
-		return "", errors.InternalServerError(err)
+		return -1, "", errors.InternalServerError(err)
 	}
 
 	if err = us.UserRepository.SaveToken(id, token); err != nil {
 		log.Println("unable to save token: " + err.Error())
-		return "", errors.InternalServerError(err)
+		return -1, "", errors.InternalServerError(err)
 	}
 
-	return token, nil
+	return int(id), token, nil
 }
 
 func (us *UserService) Login(email string, password string) (string, *dto.TokenData, *errors.ApiError) {
